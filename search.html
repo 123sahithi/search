@@ -1,0 +1,258 @@
+<html>
+  <head>
+    <title>Place Searches</title>
+    <style>
+      
+#map {
+  height: 100%;
+  width: 100%;
+}
+body {
+  margin: 0px;
+  padding: 0px;
+  background: url('img2.jpg');
+  background-repeat: no-repeat;
+  background-size: 150%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  
+}
+#container{
+  height: 100%;
+  width: 100%;
+}
+#input{
+  height: 90px;
+  
+  background-color:rgb(110, 110, 252);
+  gap: 5px;
+
+}
+#location{
+  border: none;
+  height: 30px;
+  width: 400px;
+  border-radius: 5px;
+  margin-left: 400px;
+  margin-top:30px ;
+}
+#detail{
+  height: 300px;
+  width: 500px;
+  border:none;
+  border-radius: 30px;
+  background-color: transparent;
+  display: flex;
+  flex-direction:column;
+  align-items: center;
+  justify-content: center;
+  color: aliceblue;
+  
+}
+
+
+    #photoContainer  {
+      width: 100%; 
+      margin: 5px;
+      background-color: blanchedalmond;
+    }
+    #find{
+      height: 30px;
+      width: 80px;
+      border-radius: 15px;
+      font-size: 15px;
+    }
+    .autocomplete-suggestions {
+            border: 1px solid #ccc;
+            margin-left: 400px;
+            width: 400px;
+            max-height: 150px;
+            overflow-y: auto;
+            position: absolute;
+            background: #fff;
+            z-index:500;
+           
+            
+        }
+        .autocomplete-suggestion {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .autocomplete-suggestion:hover {
+            background-color: #f0f0f0;
+        }
+  
+
+
+    </style>
+  </head>
+  <body>
+    <div id="element">
+      <div id="detail">
+        <h1>Find your favourite place address</h1>
+        <button type="submit" id="find" onclick="visible()">Find</button>
+      </div>
+    </div>
+    <div id="container" style="display: none;">
+    <div id="input"><input type="search" id="location" placeholder="Enter the location">
+    <button type="submit" onclick="search()">search</button>
+    <div id="autocomplete-suggestions" class="autocomplete-suggestions"></div>
+   </div>
+    <div id="map" ></div>
+    
+    <div id="photoContainer"></div>
+    </div>
+
+    
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap&libraries=places&v=weekly"
+      defer
+    ></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('location');
+    const suggestionsContainer = document.getElementById('autocomplete-suggestions');
+
+    const autocomplete = new google.maps.places.AutocompleteService();
+
+    input.addEventListener('input', function () {
+        const query = input.value.trim();
+
+        if (query.length < 2) { 
+            suggestionsContainer.innerHTML = '';
+            return;
+        }
+
+        autocomplete.getPlacePredictions({ input: query }, function (predictions, status) {
+            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                displaySuggestions(predictions);
+            } else {
+                console.error('Error fetching predictions:', status);
+                suggestionsContainer.innerHTML = '';
+            }
+        });
+    });
+
+    function displaySuggestions(predictions) {
+        suggestionsContainer.innerHTML = '';
+
+        predictions.forEach(prediction => {
+            const div = document.createElement('div');
+            div.classList.add('autocomplete-suggestion');
+            div.textContent = prediction.description;
+            div.addEventListener('click', function () {
+                input.value = prediction.description;
+                suggestionsContainer.innerHTML = '';
+            });
+            suggestionsContainer.appendChild(div);
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!suggestionsContainer.contains(event.target) && event.target !== input) {
+            suggestionsContainer.innerHTML = '';
+        }
+    });
+});
+      
+let map;
+let service;
+let infowindow;
+
+function initMap() {
+  const sydney = new google.maps.LatLng(-33.867, 151.195);
+
+  infowindow = new google.maps.InfoWindow();
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: sydney,
+    zoomControl: true,
+    scrollwheel: false,
+    mapTypeControl:false,
+    fullscreenControl:false,
+    rotateControl: false,
+    zoom: 15,
+  });
+  
+}
+function visible(){
+  document.getElementById('container').style.display='block';
+  document.getElementById('element').style.display='none';
+  document.body.style.backgroundImage='none';
+}
+function search(){
+  const request = {
+    query: document.getElementById('location').value,
+    fields: ["name", "formatted_address", "place_id", "geometry","photos"],
+  };
+
+  service = new google.maps.places.PlacesService(map);
+  service.findPlaceFromQuery(request, (results, status) => {
+    if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+      for (let i = 0; i < results.length; i++) {
+        const place = results[0];
+        createMarker(results[i],place.photos);
+      }
+      map.setCenter(results[0].geometry.location);
+      
+    }
+  });
+  
+}
+
+function createMarker(place,photos) {
+  if (!place.geometry || !place.geometry.location) return;
+
+  const marker = new google.maps.Marker({
+    map,
+    
+    position: place.geometry.location,
+      });
+    
+    
+    let info=google.maps.event.addListener(marker, "click", () => {
+    
+      
+    const content = document.createElement("div");
+    content.style='background-color:grey; color:black; margin:0px;padding:0px;width:300px;'
+    photos.forEach(photo => {
+      const img = document.createElement('img');
+      img.style=`width:300px;heigth:50px;`;
+      img.src = photo.getUrl({ maxWidth: 600, maxHeight: 100 });
+      content.appendChild(img);
+    });
+    
+    const nameElement = document.createElement("h2")
+    nameElement.style='color:red';
+    
+    nameElement.textContent = place.name;
+    content.appendChild(nameElement);
+
+    const placeIdElement = document.createElement("p");
+    placeIdElement.style=`color:yellow;
+    font-size:15px;`;
+    
+    placeIdElement.textContent = place.place_id;
+    content.appendChild(placeIdElement);
+    
+    const placeAddressElement = document.createElement("p");
+    placeAddressElement.style=`font-size: 20px;color:black;font-weight:50px;`;
+
+    placeAddressElement.textContent = place.formatted_address;
+    content.appendChild(placeAddressElement);
+    infowindow.setContent(content);
+    infowindow.open(map, marker);
+   
+    
+  });
+}
+    google.maps.event.addDomListener(window, 'load', initMap);
+
+
+
+
+
+    </script>
+  </body>
+</html>
